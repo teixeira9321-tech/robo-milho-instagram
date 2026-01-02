@@ -1,0 +1,25 @@
+name: Agendador do Robo
+
+on:
+  schedule:
+    # Isso faz o robô rodar todo dia às 03:00 da manhã
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Permite que você ligue o robô manualmente para testar
+
+jobs:
+  rodar-robo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixando o codigo do GitHub
+        uses: actions/checkout@v3
+
+      - name: Instalando o Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Instalando as ferramentas (requirements)
+        run: pip install -r requirements.txt
+
+      - name: Executando o motor do robô
+        run: python main.py

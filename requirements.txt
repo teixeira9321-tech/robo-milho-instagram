@@ -1,2 +1,4 @@
 supabase
 postgrest
+requests
+google-generativeai

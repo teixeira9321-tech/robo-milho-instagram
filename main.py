@@ -1,6 +1,5 @@
 import os
 import requests
-import random
 import time
 import google.generativeai as genai
 from instagrapi import Client
@@ -12,35 +11,35 @@ genai.configure(api_key=os.environ.get("GEMINI_KEY"))
 def robo_autonomo():
     cl = Client()
     
-    # Lista de termos para buscar fotos diferentes
-    temas = ["corn+field", "corn+food", "pamonha", "milho+verde", "corn+harvest"]
-    tema = random.choice(temas)
-    
-    print(f"🔎 Buscando imagem nova sobre: {tema}...")
-    # Usando o Unsplash com um parâmetro de tempo para garantir foto nova
-    url = f"https://source.unsplash.com/featured/?{tema}&sig={random.randint(1, 1000)}"
-    
-    response = requests.get(url)
+    # Busca imagem
+    url = "https://images.unsplash.com/photo-1551727041-5b347d65b633?auto=format&fit=crop&w=1080&q=80"
     with open('post.jpg', 'wb') as f:
-        f.write(response.content)
+        f.write(requests.get(url).content)
 
-    print("🤖 IA criando legenda...")
+    # IA gera legenda
     model = genai.GenerativeModel('gemini-pro')
     try:
-        res = model.generate_content("Crie uma legenda curta e brasileira sobre milho verde para Instagram.")
-        legenda = res.text
+        legenda = model.generate_content("Crie uma legenda sobre milho verde com emojis.").text
     except:
-        legenda = "O melhor milho verde do Brasil! 🌽 #milho #premium"
+        legenda = "O melhor milho verde! 🌽 #milho"
 
-    print("🚀 Tentando postar agora...")
+    print("🚀 Tentando postar...")
     try:
+        # 1. Faz o login
         cl.login(USER, PASS)
-        # Pequena espera para o Instagram processar o login
-        time.sleep(10)
-        cl.photo_upload("post.jpg", legenda)
-        print("✨ POSTADO COM SUCESSO!")
+        time.sleep(15) # Espera 15 segundos para o sistema 'respirar'
+        
+        # 2. Faz o upload da foto
+        # Usamos 'upload_photo' que é mais estável na nuvem
+        media = cl.photo_upload("post.jpg", legenda)
+        
+        if media:
+            print(f"✅ SUCESSO! Post ID: {media.pk}")
+        else:
+            print("⚠️ O Instagram aceitou o comando, mas não gerou um ID de postagem.")
+            
     except Exception as e:
-        print(f"⚠️ Erro ao postar: {e}")
+        print(f"❌ Erro real: {e}")
 
 if __name__ == "__main__":
     robo_autonomo()

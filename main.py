@@ -1,54 +1,45 @@
 import os
 import requests
 import time
-import random
 import google.generativeai as genai
 from instagrapi import Client
 
+# Puxando as senhas do GitHub
 USER = os.environ.get("INSTA_USER")
 PASS = os.environ.get("INSTA_PASS")
 genai.configure(api_key=os.environ.get("GEMINI_KEY"))
 
 def robo_autonomo():
     cl = Client()
-    # SIMULAÇÃO DE DISPOSITIVO REAL
-    cl.set_device_settings({
-        "app_version": "269.0.0.18.75",
-        "android_version": 26,
-        "android_release": "8.0.0",
-        "model": "SM-G960F",
-        "manufacturer": "samsung"
-    })
-
+    
     print("🔎 Buscando imagem...")
-    # Link de imagem de alta qualidade
+    # Usando uma imagem estável de milho
     url = "https://images.unsplash.com/photo-1551727041-5b347d65b633?q=80&w=1080"
+    response = requests.get(url)
     with open('post.jpg', 'wb') as f:
-        f.write(requests.get(url).content)
+        f.write(response.content)
 
     print("🤖 IA criando legenda...")
     model = genai.GenerativeModel('gemini-pro')
     try:
-        legenda = model.generate_content("Crie uma legenda sobre milho verde para o Instagram com hashtags.").text
+        res = model.generate_content("Crie uma legenda divertida sobre milho verde para Instagram.")
+        legenda = res.text
     except:
-        legenda = "O melhor milho verde! 🌽 #milhopremium"
+        legenda = "O melhor milho verde! 🌽 #milho #roça"
 
-    print("🚀 Iniciando login e postagem...")
+    print("🚀 Iniciando login...")
     try:
-        # Tenta logar com um pequeno atraso humano
-        time.sleep(random.randint(5, 15))
         cl.login(USER, PASS)
+        time.sleep(10) # Espera humana
         
-        # O SEGREDO: Upload com verificação
+        print("📤 Enviando postagem...")
+        # Comando padrão e seguro de upload
         media = cl.photo_upload("post.jpg", legenda)
         
         if media:
-            print(f"✅ SUCESSO ABSOLUTO! Link: https://www.instagram.com/p/{media.code}/")
-        else:
-            print("⚠️ O upload foi aceito, mas o Instagram não retornou o link do post.")
-
+            print(f"✅ SUCESSO! Post ID: {media.pk}")
     except Exception as e:
-        print(f"❌ ERRO TÉCNICO: {e}")
+        print(f"❌ Erro: {e}")
 
 if __name__ == "__main__":
     robo_autonomo()

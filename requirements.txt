@@ -1,4 +1,5 @@
-supabase
-postgrest
-requests
+
+instagrapi
 google-generativeai
+requests
+pillow

@@ -2,8 +2,8 @@ name: Agendador do Robo
 
 on:
   schedule:
-    # Isso faz o robô rodar todo dia às 03:00 da manhã
-    - cron: '0 3 * * *'
+    # Isso faz o robô rodar automaticamente a cada 2 horas
+    - cron: '0 */2 * * *'
   workflow_dispatch: # Permite que você ligue o robô manualmente para testar
 
 jobs:
@@ -16,10 +16,14 @@ jobs:
       - name: Instalando o Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10' # Atualizado para evitar o erro de TypeError
 
       - name: Instalando as ferramentas (requirements)
         run: pip install -r requirements.txt
 
       - name: Executando o motor do robô
+        env:
+          INSTA_USER: ${{ secrets.INSTA_USER }}
+          INSTA_PASS: ${{ secrets.INSTA_PASS }}
+          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
         run: python main.py

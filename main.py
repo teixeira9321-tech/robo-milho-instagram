@@ -11,33 +11,31 @@ genai.configure(api_key=os.environ.get("GEMINI_KEY"))
 def robo_autonomo():
     cl = Client()
     
-    # Busca imagem
+    print("🔎 Buscando imagem...")
     url = "https://images.unsplash.com/photo-1551727041-5b347d65b633?auto=format&fit=crop&w=1080&q=80"
-    with open('post.jpg', 'wb') as f:
-        f.write(requests.get(url).content)
+    try:
+        response = requests.get(url)
+        with open('post.jpg', 'wb') as f:
+            f.write(response.content)
+    except Exception as e:
+        print(f"Erro ao baixar imagem: {e}")
+        return
 
-    # IA gera legenda
+    print("🤖 IA criando legenda...")
     model = genai.GenerativeModel('gemini-pro')
     try:
-        legenda = model.generate_content("Crie uma legenda sobre milho verde com emojis.").text
+        res = model.generate_content("Crie uma legenda sobre milho verde com emojis.")
+        legenda = res.text
     except:
         legenda = "O melhor milho verde! 🌽 #milho"
 
     print("🚀 Tentando postar...")
     try:
-        # 1. Faz o login
         cl.login(USER, PASS)
-        time.sleep(15) # Espera 15 segundos para o sistema 'respirar'
-        
-        # 2. Faz o upload da foto
-        # Usamos 'upload_photo' que é mais estável na nuvem
+        time.sleep(15) # Espera de segurança
         media = cl.photo_upload("post.jpg", legenda)
-        
         if media:
             print(f"✅ SUCESSO! Post ID: {media.pk}")
-        else:
-            print("⚠️ O Instagram aceitou o comando, mas não gerou um ID de postagem.")
-            
     except Exception as e:
         print(f"❌ Erro real: {e}")
 

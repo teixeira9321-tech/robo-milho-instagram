@@ -4,6 +4,7 @@ import time
 import google.generativeai as genai
 from instagrapi import Client
 
+# Credenciais lidas dos Secrets do GitHub
 USER = os.environ.get("INSTA_USER")
 PASS = os.environ.get("INSTA_PASS")
 genai.configure(api_key=os.environ.get("GEMINI_KEY"))
@@ -24,7 +25,7 @@ def robo_autonomo():
     print("🤖 IA criando legenda...")
     model = genai.GenerativeModel('gemini-pro')
     try:
-        res = model.generate_content("Crie uma legenda sobre milho verde com emojis.")
+        res = model.generate_content("Crie uma legenda criativa sobre milho verde com emojis.")
         legenda = res.text
     except:
         legenda = "O melhor milho verde! 🌽 #milho"
@@ -32,12 +33,12 @@ def robo_autonomo():
     print("🚀 Tentando postar...")
     try:
         cl.login(USER, PASS)
-        time.sleep(15) # Espera de segurança
+        time.sleep(15) # Espera de segurança para o Instagram
         media = cl.photo_upload("post.jpg", legenda)
         if media:
             print(f"✅ SUCESSO! Post ID: {media.pk}")
     except Exception as e:
-        print(f"❌ Erro real: {e}")
+        print(f"❌ Erro real de postagem: {e}")
 
 if __name__ == "__main__":
     robo_autonomo()

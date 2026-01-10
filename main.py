@@ -1,52 +1,49 @@
 import os
 import requests
 import time
-import random
 import google.generativeai as genai
 from instagrapi import Client
 
+# Credenciais do ambiente GitHub
 USER = os.environ.get("INSTA_USER")
 PASS = os.environ.get("INSTA_PASS")
 genai.configure(api_key=os.environ.get("GEMINI_KEY"))
 
 def robo_autonomo():
     cl = Client()
-    # Muda o ID do dispositivo para parecer um celular novo e evitar a lista negra
-    cl.set_device_settings({
-        "app_version": "269.0.0.18.75",
-        "android_version": random.randint(26, 30),
-        "android_release": str(random.randint(9, 12)),
-        "model": random.choice(["SM-G960F", "Pixel 4", "SM-A505FN"]),
-        "manufacturer": random.choice(["samsung", "google", "xiaomi"])
-    })
-
-    print("🔎 Buscando imagem...")
+    
+    print("🔎 Buscando imagem temática...")
+    # Link direto de uma foto de milho para teste rápido e seguro
     url = "https://images.unsplash.com/photo-1551727041-5b347d65b633?auto=format&fit=crop&w=1080&q=80"
-    img_data = requests.get(url).content
-    with open('post.jpg', 'wb') as f:
-        f.write(img_data)
+    try:
+        response = requests.get(url)
+        with open('post.jpg', 'wb') as f:
+            f.write(response.content)
+    except Exception as e:
+        print(f"Erro ao baixar imagem: {e}")
+        return
 
     print("🤖 IA criando legenda...")
     model = genai.GenerativeModel('gemini-pro')
     try:
-        legenda = model.generate_content("Crie uma legenda sobre milho verde para Instagram.").text
+        # Prompt direto para evitar erros de resposta da IA
+        res = model.generate_content("Crie uma legenda curta para Instagram sobre milho verde com emojis.")
+        legenda = res.text
     except:
-        legenda = "O melhor milho verde! 🌽 #milho"
+        legenda = "O melhor do milho verde direto para você! 🌽 #milho #roça"
 
-    print("🚀 Tentando login seguro...")
+    print("🚀 Realizando login seguro...")
     try:
-        # Tenta logar com um atraso aleatório para enganar o sistema
-        time.sleep(random.randint(10, 30))
+        # Removemos o comando problemático e usamos apenas o login direto
         cl.login(USER, PASS)
-        print("✅ Login realizado!")
+        print("✅ Login realizado com sucesso!")
         
-        print("📤 Enviando postagem...")
+        print("📤 Enviando postagem ao perfil @milhopremium_...")
         cl.photo_upload("post.jpg", legenda)
         print("✨ SUCESSO TOTAL!")
     except Exception as e:
-        print(f"⚠️ Erro de Login: {e}")
-        print("DICA: Verifique se sua senha no GitHub Secret está 100% correta.")
+        print(f"⚠️ Erro de Login/Postagem: {e}")
+        print("DICA: Verifique se sua senha no GitHub Secret está correta e sem espaços.")
 
 if __name__ == "__main__":
     robo_autonomo()
-    

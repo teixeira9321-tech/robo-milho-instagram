@@ -1,23 +1,34 @@
+
 import os
-from supabase import create_client
+import requests
+import google.generativeai as genai
+from instagrapi import Client
 
-# Dados do seu projeto que já configuramos
-URL_SUPABASE = "https://awnfnetfowepwjvrghxa.supabase.co"
-KEY_SUPABASE = "sb_publishable__x416gArfeUe3rXM6SHOew_D7mWfuoY"
+# Pega as senhas escondidas nos Secrets do GitHub
+USER = os.environ.get("INSTA_USER")
+PASS = os.environ.get("INSTA_PASS")
+genai.configure(api_key=os.environ.get("GEMINI_KEY"))
 
-def iniciar_robo():
-    print("🤖 Robô iniciando...")
-    supabase = create_client(URL_SUPABASE, KEY_SUPABASE)
-    
+def robo_autonomo():
+    print("🔎 Buscando imagem de milho...")
+    # Link direto para foto de milho
+    url = "https://images.unsplash.com/photo-1551727041-5b347d65b633?auto=format&fit=crop&w=1080&q=80"
+    with open('post.jpg', 'wb') as f:
+        f.write(requests.get(url).content)
+
+    print("🤖 IA criando legenda...")
+    model = genai.GenerativeModel('gemini-pro')
     try:
-        dados = supabase.table('configuracoes').select('nicho').order('created_at', desc=True).limit(1).execute()
-        if dados.data:
-            nicho_atual = dados.data[0]['nicho']
-            print(f"✅ Sucesso! O nicho detectado foi: {nicho_atual}")
-        else:
-            print("⚠️ Nenhuma configuração encontrada.")
-    except Exception as e:
-        print(f"❌ Erro ao ler o banco: {e}")
+        res = model.generate_content("Crie uma legenda curta e alegre sobre milho verde e roça.")
+        legenda = res.text
+    except:
+        legenda = "O melhor do milho verde para você! 🌽 #milho #roça"
+
+    print("🚀 Postando no Instagram...")
+    cl = Client()
+    cl.login(USER, PASS)
+    cl.photo_upload("post.jpg", legenda)
+    print("✨ Sucesso!")
 
 if __name__ == "__main__":
-    iniciar_robo()
+    robo_autonomo()

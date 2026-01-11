@@ -1,64 +1,107 @@
 import os
 import random
-import google.generativeai as genai
+import time
+import shutil
+from google import genai
 from instagrapi import Client
+from instagrapi.exceptions import ClientError
 
-# Configurações de ambiente
-SESSION_JSON = os.environ.get("INSTA_SESSION")
-GEMINI_KEY = os.environ.get("GEMINI_KEY")
+# --- CONFIGURAÇÕES DE ALTA PERFORMANCE ---
+PASTA_MIDIA = "fotos_postar"
+ARQUIVO_SESSAO = "session.json"
+MODELO_IA = "gemini-1.5-flash" # Modelo de alta velocidade
 
-def robo_milho_premium_final():
-    if not SESSION_JSON or not GEMINI_KEY:
-        print("❌ ERRO: Secrets não configurados corretamente.")
+def limpar_cache_temporario():
+    """Remove arquivos residuais para manter o servidor leve."""
+    for root, dirs, files in os.walk("."):
+        for file in files:
+            if file.endswith(".jpg.remove_me") or file.endswith(".mp4.jpg"):
+                try: os.remove(os.path.join(root, file))
+                except: pass
+
+def robo_milho_premium_v4():
+    print("🚀 Iniciando Motor de Alta Performance...")
+    
+    # 1. VALIDAÇÃO DE INFRAESTRUTURA
+    insta_session = os.environ.get("INSTA_SESSION")
+    gemini_key = os.environ.get("GEMINI_KEY")
+
+    if not insta_session or not gemini_key:
+        print("❌ CRÍTICO: Secrets do GitHub não encontrados!")
         return
 
-    cl = Client()
-    
+    # 2. INICIALIZAÇÃO DE CLIENTES (SDK NOVO 2026)
     try:
-        # 1. Autenticação via Sessão do Termux
-        with open("session.json", "w") as f:
-            f.write(SESSION_JSON)
-        cl.load_settings("session.json")
-        print("✅ Sessão validada via Token Termux.")
+        google_client = genai.Client(api_key=gemini_key)
+        cl = Client()
+        cl.delay_range = [2, 5] # Delay humano para evitar bloqueios
+        
+        with open(ARQUIVO_SESSAO, "w") as f:
+            f.write(insta_session)
+        cl.load_settings(ARQUIVO_SESSAO)
+        print("✅ Autenticação Instagram: VALIDADA")
+    except Exception as e:
+        print(f"❌ Erro na Inicialização: {e}")
+        return
 
-        # 2. Seleção de Mídia Real (fotos_postar)
-        pasta = "fotos_postar"
-        arquivos = [f for f in os.listdir(pasta) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4', '.mov'))]
+    # 3. SELEÇÃO INTELIGENTE DE MÍDIA
+    try:
+        if not os.path.exists(PASTA_MIDIA):
+            os.makedirs(PASTA_MIDIA)
+            
+        arquivos = [f for f in os.listdir(PASTA_MIDIA) 
+                   if f.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4', '.mov'))]
         
         if not arquivos:
-            print(f"❌ ERRO: Pasta '{pasta}' vazia.")
+            print(f"⚠️ Pasta {PASTA_MIDIA} vazia. Abortando ciclo.")
             return
-        
+
         escolhido = random.choice(arquivos)
-        caminho = os.path.join(pasta, escolhido)
+        caminho_completo = os.path.join(PASTA_MIDIA, escolhido)
         ext = escolhido.lower().split('.')[-1]
-        print(f"📦 Mídia selecionada: {escolhido}")
+        print(f"📦 Mídia Selecionada: {escolhido} (Tipo: {ext.upper()})")
+    except Exception as e:
+        print(f"❌ Erro ao acessar arquivos: {e}")
+        return
 
-        # 3. Inteligência Artificial (Ajuste para Evitar o Erro 404)
-        print("🤖 Gerando legenda estratégica...")
-        try:
-            genai.configure(api_key=GEMINI_KEY)
-            # MUDANÇA CRÍTICA: Adicionado o sufixo -latest para estabilidade
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
-            prompt = "Crie uma legenda curta, vendedora e criativa para um post de milho verde premium. Use emojis."
-            legenda = model.generate_content(prompt).text
-        except Exception as ia_err:
-            print(f"⚠️ Erro na IA: {ia_err}. Usando legenda reserva.")
-            legenda = "O melhor milho verde da região, fresquinho todo dia! 🌽 #milhopremium"
+    # 4. INTELIGÊNCIA ARTIFICIAL (ALTA TECNOLOGIA)
+    print("🤖 Gerando legenda estratégica via Gemini 1.5 Flash...")
+    try:
+        prompt = (
+            "Atue como um especialista em marketing digital para agronegócio. "
+            "Crie uma legenda curta, altamente vendedora e com emojis para um post "
+            "de milho verde premium. Foque em frescor e sabor."
+        )
+        response = google_client.models.generate_content(
+            model=MODELO_IA,
+            contents=prompt
+        )
+        legenda = response.text.strip()
+        print("📝 Legenda gerada com sucesso.")
+    except Exception as ia_err:
+        print(f"⚠️ Falha na IA: {ia_err}. Ativando Legenda de Contingência.")
+        legenda = "O milho verde mais fresquinho e selecionado da região! 🌽 Peça já o seu. #milhopremium #agro"
 
-        # 4. Upload de Alta Performance
+    # 5. EXECUÇÃO DO UPLOAD (BLINDADO)
+    try:
+        print(f"📤 Enviando {ext.upper()} para o Instagram...")
         if ext in ['mp4', 'mov']:
-            print("🎥 Postando Vídeo...")
-            media = cl.video_upload(caminho, legenda)
+            # Otimizado para Reels/Vídeo de Feed
+            media = cl.video_upload(caminho_completo, legenda)
         else:
-            print("📸 Postando Foto...")
-            media = cl.photo_upload(caminho, legenda)
+            # Otimizado para Fotos
+            media = cl.photo_upload(caminho_completo, legenda)
         
         if media:
-            print(f"✨ SUCESSO! Post realizado: {media.code}")
-
+            print(f"✨ SUCESSO! Post publicado: https://www.instagram.com/p/{media.code}/")
+    except ClientError as ce:
+        print(f"❌ Erro de API do Instagram: {ce}")
     except Exception as e:
-        print(f"❌ FALHA NO MOTOR: {e}")
+        print(f"❌ Falha inesperada no upload: {e}")
+    finally:
+        limpar_cache_temporario()
+        print("🧹 Limpeza de sistema concluída.")
 
 if __name__ == "__main__":
-    robo_milho_premium_final()
+    # Roda o ciclo
+    robo_milho_premium_v4()

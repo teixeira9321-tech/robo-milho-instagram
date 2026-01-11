@@ -1,64 +1,68 @@
 import os
-import requests
-import json
-import time
+import random
 import google.generativeai as genai
 from instagrapi import Client
+from instagrapi.types import StoryMedia
 
-# Configurações de ambiente do GitHub
+# Configurações de ambiente
 SESSION_JSON = os.environ.get("INSTA_SESSION")
 GEMINI_KEY = os.environ.get("GEMINI_KEY")
 
-def robo_milho_premium():
-    # 1. Verificação de Segurança do Secret
+def robo_milho_premium_v3():
     if not SESSION_JSON:
-        print("❌ ERRO: O Secret 'INSTA_SESSION' está vazio ou não foi configurado.")
+        print("❌ ERRO CRÍTICO: Secret INSTA_SESSION não configurado.")
         return
 
     cl = Client()
     
     try:
-        # 2. Bypass de Login usando a Sessão do Termux
-        print("🚀 Carregando identidade digital (Sessão)...")
+        # 1. Autenticação via Sessão (Alta Performance)
         with open("session.json", "w") as f:
             f.write(SESSION_JSON)
-        
-        # Carrega as configurações sem precisar de login/senha/CSRF
         cl.load_settings("session.json")
-        print("✅ Sessão carregada com sucesso!")
+        print("✅ Autenticação realizada via Token Termux.")
 
-        # 3. Preparação da Imagem
-        print("🔎 Baixando imagem de milho premium...")
-        img_url = "https://images.unsplash.com/photo-1551727041-5b347d65b633?q=80&w=1080"
-        img_data = requests.get(img_url).content
-        with open("post.jpg", "wb") as f:
-            f.write(img_data)
+        # 2. Seleção Inteligente de Mídia (Fotos ou Vídeos)
+        pasta = "fotos_postar"
+        # Filtra arquivos suportados
+        arquivos = [f for f in os.listdir(pasta) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4', '.mov'))]
+        
+        if not arquivos:
+            print(f"❌ ERRO: A pasta '{pasta}' está vazia.")
+            return
+        
+        escolhido = random.choice(arquivos)
+        caminho = os.path.join(pasta, escolhido)
+        ext = escolhido.lower().split('.')[-1]
+        print(f"📦 Mídia selecionada: {escolhido}")
 
-        # 4. Inteligência Artificial para Legenda
-        print("🤖 Solicitando legenda para a IA...")
+        # 3. Inteligência Artificial (Modelo 1.5 Flash - Alta Velocidade)
+        print("🤖 Gerando legenda estratégica...")
         try:
             genai.configure(api_key=GEMINI_KEY)
-            model = genai.GenerativeModel('gemini-pro')
-            prompt = "Crie uma legenda curta e vendedora para Instagram sobre milho verde premium com emojis."
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            prompt = "Crie uma legenda curta e irresistível para vender milho verde premium. Use emojis."
             legenda = model.generate_content(prompt).text
         except Exception as ia_err:
-            print(f"⚠️ Erro na IA: {ia_err}. Usando legenda padrão.")
-            legenda = "O melhor milho verde da região! 🌽 #milhopremium #milho"
+            print(f"⚠️ IA indisponível ({ia_err}). Usando legenda reserva.")
+            legenda = "O melhor milho verde da região, fresquinho todo dia! 🌽 #milhopremium"
 
-        # 5. Execução da Postagem
-        print("📤 Enviando para o Instagram...")
-        # O upload_photo é o método mais estável para contas profissionais
-        media = cl.photo_upload("post.jpg", legenda)
+        # 4. Upload Diferenciado (Foto vs Vídeo)
+        print(f"📤 Iniciando upload de {ext.upper()}...")
+        
+        if ext in ['mp4', 'mov']:
+            # Lógica para Vídeo (Reels/Feed)
+            media = cl.video_upload(caminho, legenda)
+        else:
+            # Lógica para Foto
+            media = cl.photo_upload(caminho, legenda)
         
         if media:
-            print(f"✨ SUCESSO ABSOLUTO! Publicação realizada.")
-            print(f"🔗 Link do post: https://www.instagram.com/p/{media.code}/")
+            print(f"✨ SUCESSO! Post realizado com ID: {media.pk}")
+            print(f"🔗 Link: https://www.instagram.com/p/{media.code}/")
 
     except Exception as e:
-        print(f"❌ FALHA TÉCNICA NO PROCESSO: {e}")
-        # Se o erro for de sessão expirada, o log avisará
-        if "login_required" in str(e).lower():
-            print("💡 DICA: Sua sessão do Termux expirou. Gere um novo token no celular.")
+        print(f"❌ FALHA NO MOTOR: {e}")
 
 if __name__ == "__main__":
-    robo_milho_premium()
+    robo_milho_premium_v3()

@@ -1,11 +1,10 @@
 import os
 import random
-import time
-import requests 
+import requests
 from instagrapi import Client
 
-def motor_http_universal_corrigido():
-    print("🌍 INICIANDO PROTOCOLO UNIVERSAL (HTTP REST)...")
+def motor_ai_studio_final():
+    print("🚀 INICIANDO PROTOCOLO AI STUDIO...")
     
     insta_session = os.environ.get("INSTA_SESSION")
     gemini_key = os.environ.get("GEMINI_KEY")
@@ -38,46 +37,41 @@ def motor_http_universal_corrigido():
     except:
         return
 
-    # 3. INTELIGÊNCIA ARTIFICIAL (CORRIGIDA)
-    print("🤖 Chamando o Google via HTTP Direto...")
+    # 3. INTELIGÊNCIA ARTIFICIAL (Compatível com AI Studio)
+    print("🤖 Testando modelos disponíveis na sua chave...")
     
-    legenda_final = "O melhor milho verde da região! 🌽 #milhopremium"
+    legenda_final = "O milho verde mais saboroso da região! 🌽 #milhopremium"
     
-    # Tenta Beta (Flash) e depois Produção (Pro)
-    endpoints = [
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}",
-        f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={gemini_key}"
+    # O AI Studio costuma liberar o 'gemini-1.5-flash' na porta v1beta
+    modelos = [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-pro"
     ]
 
-    payload = {
-        "contents": [{
-            "parts": [{"text": "Crie uma legenda curta, vendedora e com emojis para vender milho verde premium."}]
-        }]
-    }
+    sucesso = False
     headers = {'Content-Type': 'application/json'}
+    payload = {
+        "contents": [{"parts": [{"text": "Crie uma legenda curta, vendedora e com emojis para milho verde."}]}]
+    }
 
-    sucesso_ia = False
-    for url in endpoints:
+    for modelo in modelos:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={gemini_key}"
         try:
-            modelo_nome = url.split('models/')[1].split(':')[0]
-            print(f"🔄 Tentando conectar em: {modelo_nome}...")
-            
-            response = requests.post(url, headers=headers, json=payload, timeout=10)
-            
-            if response.status_code == 200:
-                dados = response.json()
-                try:
-                    legenda_final = dados['candidates'][0]['content']['parts'][0]['text']
-                    print("✅ SUCESSO! A IA respondeu via HTTP.")
-                    sucesso_ia = True
-                    break 
-                except KeyError: # <--- O ERRO ESTAVA AQUI, AGORA ESTÁ CORRIGIDO
-                    print("⚠️ JSON retornou mas sem texto.")
+            print(f"🔄 Tentando {modelo}...", end=" ")
+            r = requests.post(url, headers=headers, json=payload, timeout=10)
+            if r.status_code == 200:
+                legenda_final = r.json()['candidates'][0]['content']['parts'][0]['text']
+                print("✅ SUCESSO! Conectado.")
+                sucesso = True
+                break
             else:
-                print(f"⚠️ Falha HTTP {response.status_code}: {response.text[:100]}...")
-                
-        except Exception as e:
-            print(f"⚠️ Erro de conexão: {e}")
+                print(f"❌ ({r.status_code})")
+        except:
+            print("❌ Erro conexão")
+
+    if not sucesso:
+        print("⚠️ IA não respondeu. Usando legenda padrão.")
 
     # 4. Upload
     print(f"📤 Postando...")
@@ -87,9 +81,9 @@ def motor_http_universal_corrigido():
             cl.video_upload(caminho, legenda_final)
         else:
             cl.photo_upload(caminho, legenda_final)
-        print("✨ OPERAÇÃO FINALIZADA.")
+        print("✨ OPERAÇÃO CONCLUÍDA.")
     except Exception as e:
-        print(f"❌ Erro no Upload: {e}")
+        print(f"❌ Erro Upload: {e}")
 
 if __name__ == "__main__":
-    motor_http_universal_corrigido()
+    motor_ai_studio_final()

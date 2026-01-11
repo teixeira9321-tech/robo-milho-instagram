@@ -1,10 +1,10 @@
 import os
 import random
 import time
-import requests # O segredo: usar HTTP direto, sem SDK do Google
+import requests 
 from instagrapi import Client
 
-def motor_http_universal():
+def motor_http_universal_corrigido():
     print("🌍 INICIANDO PROTOCOLO UNIVERSAL (HTTP REST)...")
     
     insta_session = os.environ.get("INSTA_SESSION")
@@ -14,7 +14,7 @@ def motor_http_universal():
         print("❌ CRÍTICO: Chaves não encontradas.")
         return
 
-    # 1. Instagram (Mantido pois funciona)
+    # 1. Instagram
     cl = Client()
     try:
         with open("session.json", "w") as f:
@@ -38,14 +38,12 @@ def motor_http_universal():
     except:
         return
 
-    # 3. INTELIGÊNCIA ARTIFICIAL (A SOLUÇÃO VIA REQUESTS)
+    # 3. INTELIGÊNCIA ARTIFICIAL (CORRIGIDA)
     print("🤖 Chamando o Google via HTTP Direto...")
     
     legenda_final = "O melhor milho verde da região! 🌽 #milhopremium"
     
-    # LISTA DE TENTATIVAS (Endereços diretos da API)
-    # 1º Tenta o Flash na v1beta (onde ele costuma funcionar para chaves gratuitas)
-    # 2º Tenta o Pro na v1 (modelo mais estável do mundo)
+    # Tenta Beta (Flash) e depois Produção (Pro)
     endpoints = [
         f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}",
         f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={gemini_key}"
@@ -61,7 +59,9 @@ def motor_http_universal():
     sucesso_ia = False
     for url in endpoints:
         try:
-            print(f"🔄 Tentando conectar em: ...{url.split('models/')[1].split(':')[0]}...")
+            modelo_nome = url.split('models/')[1].split(':')[0]
+            print(f"🔄 Tentando conectar em: {modelo_nome}...")
+            
             response = requests.post(url, headers=headers, json=payload, timeout=10)
             
             if response.status_code == 200:
@@ -70,18 +70,14 @@ def motor_http_universal():
                     legenda_final = dados['candidates'][0]['content']['parts'][0]['text']
                     print("✅ SUCESSO! A IA respondeu via HTTP.")
                     sucesso_ia = True
-                    break # Para de tentar se conseguir
-                exceptKeyError:
+                    break 
+                except KeyError: # <--- O ERRO ESTAVA AQUI, AGORA ESTÁ CORRIGIDO
                     print("⚠️ JSON retornou mas sem texto.")
             else:
-                # Mostra o erro real do Google se falhar
                 print(f"⚠️ Falha HTTP {response.status_code}: {response.text[:100]}...")
                 
         except Exception as e:
             print(f"⚠️ Erro de conexão: {e}")
-
-    if not sucesso_ia:
-        print("⚠️ Usando legenda de reserva (IA não respondeu).")
 
     # 4. Upload
     print(f"📤 Postando...")
@@ -96,4 +92,4 @@ def motor_http_universal():
         print(f"❌ Erro no Upload: {e}")
 
 if __name__ == "__main__":
-    motor_http_universal()
+    motor_http_universal_corrigido()

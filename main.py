@@ -1,96 +1,99 @@
 import os
 import random
 import time
-from google import genai
-from google.genai import types
+import requests # O segredo: usar HTTP direto, sem SDK do Google
 from instagrapi import Client
-from instagrapi.exceptions import ClientError
 
-# --- CONFIGURAÇÕES DE ALTA PERFORMANCE ---
-MAX_TENTATIVAS = 3
-TEMPERATURA_IA = 0.85
-DELAY_HUMANO = [2, 5]
-
-def motor_cyber_milho_v2():
-    print("🚀 SISTEMA V2: Iniciando Protocolo de Correção de Rota...")
+def motor_http_universal():
+    print("🌍 INICIANDO PROTOCOLO UNIVERSAL (HTTP REST)...")
     
     insta_session = os.environ.get("INSTA_SESSION")
     gemini_key = os.environ.get("GEMINI_KEY")
 
     if not insta_session or not gemini_key:
-        print("❌ CRÍTICO: Credenciais ausentes.")
+        print("❌ CRÍTICO: Chaves não encontradas.")
         return
 
+    # 1. Instagram (Mantido pois funciona)
+    cl = Client()
     try:
-        # --- A CORREÇÃO MÁGICA ESTÁ AQUI EMBAIXO ---
-        # Adicionei http_options={'api_version': 'v1'} para sair do modo Beta
-        client_google = genai.Client(
-            api_key=gemini_key,
-            http_options={'api_version': 'v1'} 
-        )
-        
-        cl = Client()
-        cl.delay_range = DELAY_HUMANO
-        
         with open("session.json", "w") as f:
             f.write(insta_session)
         cl.load_settings("session.json")
-        print("✅ Conectividade: Rota V1 (Produção) Ativada.")
-        
+        print("✅ Instagram: Conectado.")
     except Exception as e:
-        print(f"❌ Falha na Inicialização: {e}")
+        print(f"❌ Erro Instagram: {e}")
         return
 
-    # SELEÇÃO DE MÍDIA
+    # 2. Seleção de Mídia
     pasta = "fotos_postar"
     try:
         arquivos = [f for f in os.listdir(pasta) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4', '.mov'))]
         if not arquivos:
-            print("⚠️ Estoque vazio.")
+            print("⚠️ Pasta vazia.")
             return
         escolhido = random.choice(arquivos)
-        caminho_completo = os.path.join(pasta, escolhido)
-        ext = escolhido.lower().split('.')[-1]
+        caminho = os.path.join(pasta, escolhido)
         print(f"📦 Mídia: {escolhido}")
     except:
         return
 
-    # GERAÇÃO DE CONTEÚDO (IA)
-    print("🧠 Solicitando legenda na Rota V1...")
-    legenda_final = "Milho verde premium! 🌽 Sabor inigualável. #milho"
+    # 3. INTELIGÊNCIA ARTIFICIAL (A SOLUÇÃO VIA REQUESTS)
+    print("🤖 Chamando o Google via HTTP Direto...")
     
-    for tentativa in range(MAX_TENTATIVAS):
-        try:
-            prompt = "Crie uma legenda curta e muito vendedora para Instagram de milho verde. Use emojis."
-            
-            # Chamada otimizada para V1
-            response = client_google.models.generate_content(
-                model="gemini-1.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=TEMPERATURA_IA,
-                    candidate_count=1
-                )
-            )
-            legenda_final = response.text.strip()
-            print("✨ SUCESSO ABSOLUTO: A IA respondeu!")
-            break 
-        except Exception as ia_err:
-            print(f"⚠️ Tentativa {tentativa+1} falhou: {ia_err}")
-            time.sleep(1)
+    legenda_final = "O melhor milho verde da região! 🌽 #milhopremium"
+    
+    # LISTA DE TENTATIVAS (Endereços diretos da API)
+    # 1º Tenta o Flash na v1beta (onde ele costuma funcionar para chaves gratuitas)
+    # 2º Tenta o Pro na v1 (modelo mais estável do mundo)
+    endpoints = [
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}",
+        f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={gemini_key}"
+    ]
 
-    # UPLOAD
+    payload = {
+        "contents": [{
+            "parts": [{"text": "Crie uma legenda curta, vendedora e com emojis para vender milho verde premium."}]
+        }]
+    }
+    headers = {'Content-Type': 'application/json'}
+
+    sucesso_ia = False
+    for url in endpoints:
+        try:
+            print(f"🔄 Tentando conectar em: ...{url.split('models/')[1].split(':')[0]}...")
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            
+            if response.status_code == 200:
+                dados = response.json()
+                try:
+                    legenda_final = dados['candidates'][0]['content']['parts'][0]['text']
+                    print("✅ SUCESSO! A IA respondeu via HTTP.")
+                    sucesso_ia = True
+                    break # Para de tentar se conseguir
+                exceptKeyError:
+                    print("⚠️ JSON retornou mas sem texto.")
+            else:
+                # Mostra o erro real do Google se falhar
+                print(f"⚠️ Falha HTTP {response.status_code}: {response.text[:100]}...")
+                
+        except Exception as e:
+            print(f"⚠️ Erro de conexão: {e}")
+
+    if not sucesso_ia:
+        print("⚠️ Usando legenda de reserva (IA não respondeu).")
+
+    # 4. Upload
     print(f"📤 Postando...")
     try:
+        ext = escolhido.lower().split('.')[-1]
         if ext in ['mp4', 'mov']:
-            media = cl.video_upload(caminho_completo, legenda_final)
+            cl.video_upload(caminho, legenda_final)
         else:
-            media = cl.photo_upload(caminho_completo, legenda_final)
-            
-        if media:
-            print(f"🏆 POST NO AR: https://www.instagram.com/p/{media.code}/")
+            cl.photo_upload(caminho, legenda_final)
+        print("✨ OPERAÇÃO FINALIZADA.")
     except Exception as e:
-        print(f"❌ Erro Upload: {e}")
+        print(f"❌ Erro no Upload: {e}")
 
 if __name__ == "__main__":
-    motor_cyber_milho_v2()
+    motor_http_universal()

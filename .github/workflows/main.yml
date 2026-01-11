@@ -2,8 +2,9 @@ name: "🚀 Motor de Elite - Milho Premium"
 
 on:
   schedule:
-    # Agendamento preciso de 2 em 2 horas
-    - cron: '0 */2 * * *'
+    # Horários de disparo (Brasil): 04:00, 11:00 e 17:00
+    # Convertido para UTC: 07, 14 e 20
+    - cron: '0 7,14,20 * * *'
   workflow_dispatch:
     inputs:
       debug_mode:

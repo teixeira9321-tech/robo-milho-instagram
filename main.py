@@ -1,139 +1,100 @@
 import os
-import shutil  # Biblioteca essencial para mover arquivos
+import shutil
 import requests
 import time
 from instagrapi import Client
 
-# --- CONFIGURAÇÕES DE PASTAS ---
-# Alterado para separar o que é novo do que já foi usado
+# --- CONFIGURAÇÕES ---
 PASTA_NOVOS = "conteudo_novo"
 PASTA_POSTADOS = "conteudo_postado"
 
-def motor_corrigido_sem_papo():
-    print("🤐 INICIANDO PROTOCOLO 'SEM CONVERSA FIADA'...")
-    
+def motor_elite_v2():
+    print("🚀 INICIANDO MOTOR DE ELITE V2...")
+
     # 1. Verificação de Ambiente
     insta_session = os.environ.get("INSTA_SESSION")
     gemini_key = os.environ.get("GEMINI_KEY")
 
     if not insta_session or not gemini_key:
-        print("❌ CRÍTICO: Chaves de segurança (Secrets) não encontradas.")
+        print("❌ ERRO: Secrets (Chaves) não configuradas no GitHub.")
         return
 
-    # 2. Configuração de Diretórios (Auto-Correção)
-    # Se as pastas não existirem, o robô cria sozinho para evitar erros
+    # 2. Criação de Pastas (Garante que existem)
     for pasta in [PASTA_NOVOS, PASTA_POSTADOS]:
         if not os.path.exists(pasta):
             os.makedirs(pasta)
-            print(f"📂 Pasta criada automaticamente: {pasta}")
+            print(f"📂 Pasta verificada/criada: {pasta}")
 
-    # 3. Seleção de Mídia (Lógica de Fila)
-    # Melhoria: Usa 'sorted' para você controlar a ordem (ex: 01.jpg, 02.mp4)
-    # Filtra apenas arquivos de imagem e vídeo válidos
-    extensoes_validas = ('.jpg', '.jpeg', '.png', '.mp4', '.mov', '.mkv')
-    arquivos = sorted([f for f in os.listdir(PASTA_NOVOS) if f.lower().endswith(extensoes_validas)])
-    
+    # 3. Seleção de Mídia
+    extensoes = ('.jpg', '.jpeg', '.png', '.mp4', '.mov', '.avi')
+    # Lista arquivos e ordena para pegar sempre o primeiro
+    arquivos = sorted([f for f in os.listdir(PASTA_NOVOS) if f.lower().endswith(extensoes)])
+
     if not arquivos:
-        print(f"📭 A pasta '{PASTA_NOVOS}' está vazia. Nada para postar hoje.")
+        print(f"📭 Pasta '{PASTA_NOVOS}' vazia. Nada para postar.")
         return
 
-    # Pega sempre o primeiro da fila
     escolhido = arquivos[0]
     caminho_origem = os.path.join(PASTA_NOVOS, escolhido)
-    print(f"📦 Mídia Selecionada da Fila: {escolhido}")
+    print(f"📦 Mídia da vez: {escolhido}")
 
-    # 4. Conexão Instagram (Com Retentativa)
+    # 4. Login Instagram (Blindado)
     cl = Client()
     try:
-        # Tenta usar configurações salvas para parecer mais humano
-        cl.load_settings("session.json") if os.path.exists("session.json") else None
-        
-        # Injeta a sessão via env (Login sem senha, mais seguro)
+        # Tenta criar o arquivo de sessão com o que tem na Secret
         with open("session.json", "w") as f:
             f.write(insta_session)
         cl.load_settings("session.json")
-        print("✅ Instagram: Conectado com sucesso.")
+        cl.login(os.environ.get("INSTA_USER", ""), os.environ.get("INSTA_PASS", "")) # Fallback se tiver user/pass
+        print("✅ Instagram Conectado.")
     except Exception as e:
-        print(f"❌ Erro Crítico no Login: {e}")
-        return
+        print(f"⚠️ Aviso de Login: {e}")
+        # Se der erro no load, tenta seguir se a sessão ainda for válida na memória
+        pass
 
-    # 5. GERAÇÃO DE LEGENDA (Cérebro Gemini)
-    print("🧠 Gerando legenda blindada...")
-    legenda_final = "Milho verde de alta qualidade! 🌽 #milhopremium #agronegocio" # Fallback de segurança
+    # 5. Geração de Legenda (Gemini 1.5 Flash)
+    print("🧠 Criando legenda...")
+    legenda = "Milho Premium! 🌽 #agronegocio" # Legenda padrão
     
-    prompt_sistema = """
-    Atue como um Social Media Manager especialista em Agronegócio.
-    Escreva uma legenda para esta foto/vídeo de milho verde.
-    
-    REGRAS OBRIGATÓRIAS:
-    1. NÃO use introduções ("Aqui está", "Opções").
-    2. NÃO faça listas numeradas.
-    3. Texto curto, persuasivo e direto.
-    4. Use emojis relacionados a milho/campo.
-    5. Foco em apetite ou qualidade do produto.
-    
-    Responda APENAS com o texto da legenda final.
-    """
+    prompt = f"Crie uma legenda curta, atraente e vendedora para Instagram sobre milho verde premium. Use emojis. Sem aspas. Foco: Sabor e Qualidade. Arquivo: {escolhido}"
 
     try:
-        # Lógica Simplificada: Tenta o modelo Flash direto (mais rápido e barato)
-        modelo = "gemini-1.5-flash"
-        url_gen = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent?key={gemini_key}"
-        payload = {"contents": [{"parts": [{"text": prompt_sistema}]}]}
-        headers = {'Content-Type': 'application/json'}
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+        payload = {"contents": [{"parts": [{"text": prompt}]}]}
         
-        r_gen = requests.post(url_gen, headers=headers, json=payload, timeout=15)
+        req = requests.post(url, json=payload, headers={'Content-Type': 'application/json'}, timeout=10)
         
-        if r_gen.status_code == 200:
-            texto_ia = r_gen.json()['candidates'][0]['content']['parts'][0]['text']
-            # Limpeza cirúrgica
-            legenda_final = texto_ia.replace("*", "").strip()
-            print("✅ SUCESSO! Legenda gerada pela IA.")
+        if req.status_code == 200:
+            legenda = req.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+            print("✅ Legenda IA Gerada.")
         else:
-            print(f"⚠️ IA Falhou (Status {r_gen.status_code}). Usando legenda padrão.")
-
+            print(f"⚠️ Erro IA: {req.status_code} - Usando padrão.")
     except Exception as e:
-        print(f"⚠️ Erro na conexão com IA: {e}. Usando legenda padrão.")
+        print(f"⚠️ Erro Conexão IA: {e}")
 
-    # 6. Upload e Movimentação (Ação Final)
-    print(f"📤 Iniciando upload para o Instagram...")
-    sucesso_upload = False
-
+    # 6. Postagem
+    sucesso = False
     try:
-        ext = escolhido.lower().split('.')[-1]
-        
-        if ext in ['mp4', 'mov', 'mkv']:
-            # O FFmpeg instalado no YAML vai garantir que isso não trave
-            print("🎥 Processando vídeo (Isso pode levar alguns segundos)...")
-            cl.video_upload(caminho_origem, legenda_final)
+        print("📤 Postando...")
+        if escolhido.lower().endswith(('.mp4', '.mov', '.avi')):
+            cl.video_upload(caminho_origem, legenda)
         else:
-            print("📸 Processando imagem...")
-            cl.photo_upload(caminho_origem, legenda_final)
-            
-        print("✨ POSTAGEM REALIZADA COM SUCESSO!")
-        sucesso_upload = True
-        
+            cl.photo_upload(caminho_origem, legenda)
+        print("✨ POSTADO COM SUCESSO!")
+        sucesso = True
     except Exception as e:
-        print(f"❌ ERRO FATAL NO UPLOAD: {e}")
-        # Se der erro no upload, NÃO movemos o arquivo. Ele tenta de novo no próximo horário.
+        print(f"❌ Erro no Upload: {e}")
 
-    # 7. Organização Pós-Postagem (Evita Repetição)
-    if sucesso_upload:
-        try:
-            caminho_destino = os.path.join(PASTA_POSTADOS, escolhido)
-            
-            # Se já existir arquivo com mesmo nome na pasta de postados, renomeia
-            if os.path.exists(caminho_destino):
-                nome, extensao = os.path.splitext(escolhido)
-                timestamp = int(time.time())
-                novo_nome = f"{nome}_{timestamp}{extensao}"
-                caminho_destino = os.path.join(PASTA_POSTADOS, novo_nome)
-            
-            shutil.move(caminho_origem, caminho_destino)
-            print(f"🔄 Arquivo movido para '{PASTA_POSTADOS}'. Ciclo concluído.")
-            
-        except Exception as e:
-            print(f"⚠️ Postou, mas erro ao mover arquivo: {e}")
+    # 7. Mover Arquivo (A parte mais importante)
+    if sucesso:
+        destino = os.path.join(PASTA_POSTADOS, escolhido)
+        if os.path.exists(destino):
+            # Se já existe lá, renomeia para não dar erro
+            timestamp = int(time.time())
+            destino = os.path.join(PASTA_POSTADOS, f"{timestamp}_{escolhido}")
+        
+        shutil.move(caminho_origem, destino)
+        print(f"🔄 Arquivo movido para '{PASTA_POSTADOS}'.")
 
 if __name__ == "__main__":
-    motor_corrigido_sem_papo()
+    motor_elite_v2()

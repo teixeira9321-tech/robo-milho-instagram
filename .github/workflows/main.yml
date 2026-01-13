@@ -2,50 +2,70 @@ name: "🚀 Motor de Elite - Milho Premium"
 
 on:
   schedule:
-    # Horários de disparo (Brasil): 04:00, 11:00 e 17:00
-    # Convertido para UTC: 07, 14 e 20
+    # Horários de disparo (Brasil): 07:00, 14:00 e 20:00 (UTC)
+    # Nota: O GitHub usa UTC. 07 UTC = 04:00 BRT. Ajuste conforme necessidade.
     - cron: '0 7,14,20 * * *'
   workflow_dispatch:
     inputs:
       debug_mode:
-        description: 'Ativar modo de análise detalhada?'
+        description: 'Modo de Teste Manual'
         required: false
         default: 'false'
+
+# PERMISSÃO CRÍTICA: Autoriza o robô a salvar arquivos no repositório
+permissions:
+  contents: write
 
 jobs:
   execucao-alta-performance:
     name: "Processamento de Mídia e IA"
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # Evita que o robô fique travado gastando seus minutos
+    timeout-minutes: 15
 
     steps:
       - name: "📂 Sincronizando Repositório"
-        uses: actions/checkout@v4 # Versão mais recente e veloz
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Garante histórico completo para evitar erros no git push
 
       - name: "🐍 Setup Python Otimizado"
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11' # Versão mais rápida que a 3.10
-          cache: 'pip' # Ativa o cache automático do GitHub
+          python-version: '3.11'
+          cache: 'pip'
 
-      - name: "📦 Injeção de Dependências de Alta Performance"
+      - name: "📦 Injeção de Dependências"
         run: |
           python -m pip install --upgrade pip
           pip install instagrapi requests google-genai pillow
-          # Pillow adicionado para pré-processamento de imagens se necessário
 
       - name: "⚙️ Ativação do Motor Inteligente"
         env:
-          # Segredos Blindados
           INSTA_SESSION: ${{ secrets.INSTA_SESSION }}
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
-          PYTHONUNBUFFERED: 1 # Força o log a aparecer em tempo real
+          PYTHONUNBUFFERED: 1
         run: |
-          echo "🚀 Iniciando ciclo de postagem automatizada..."
+          echo "🚀 Iniciando ciclo de postagem..."
           python main.py
-          echo "✅ Ciclo finalizado com sucesso."
+          echo "✅ Script Python finalizado."
 
-      - name: "📊 Relatório de Execução"
+      # --- NOVIDADE: SALVAMENTO AUTOMÁTICO ---
+      - name: "💾 Salvar Alterações (Mover Arquivos)"
+        if: success() # Só roda se o Python não deu erro
+        run: |
+          echo "⚙️ Configurando identidade do robô..."
+          git config --global user.name 'Motor Elite Bot'
+          git config --global user.email 'bot@milhopremium.com'
+          
+          echo "📂 Verificando mudanças nas pastas..."
+          git add conteudo_novo/*
+          git add conteudo_postado/*
+          
+          # Verifica se tem algo pra salvar. Se tiver, faz o commit e o push.
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [AUTO] Mídia processada e movida" && git push)
+          echo "✅ Repositório atualizado com sucesso!"
+
+      - name: "📊 Relatório Final"
         if: always()
         run: |
-          echo "Finalizado em: $(date)"
+          echo "Ciclo encerrado em: $(date)"

@@ -2,11 +2,9 @@ name: "🚀 Motor de Elite - Milho Premium V2"
 
 on:
   schedule:
-    # Horários Otimizados para o Brasil (UTC-3):
-    # 10:00 UTC = 07:00 Brasil
-    # 15:00 UTC = 12:00 Brasil
-    # 22:00 UTC = 19:00 Brasil
-    - cron: '0 10,15,22 * * *'
+    # MUDANÇA 1: Colocamos no minuto 17 para fugir do congestionamento
+    # Horários Brasil: 07:17, 12:17, 19:17
+    - cron: '17 10,15,22 * * *'
   
   workflow_dispatch:
     inputs:
@@ -35,9 +33,17 @@ jobs:
         with:
           fetch-depth: 0 
 
+      # MUDANÇA 2: O Escudo que limpa o erro vermelho do log
+      - name: "🛡️ Criando Escudo (.gitignore)"
+        run: |
+          echo "session.json" > .gitignore
+          echo "*.jpg" >> .gitignore
+          echo "__pycache__/" >> .gitignore
+          # Agora o Git ignora a sujeira e não trava a atualização
+
       - name: "🔍 Diagnóstico Pré-Voo"
         run: |
-          echo "📂 Estado ATUAL dos arquivos (Antes da Postagem):"
+          echo "📂 Estado ATUAL dos arquivos:"
           ls -R
           
       - name: "🐍 Setup Python Otimizado"
@@ -61,27 +67,27 @@ jobs:
           echo "🚀 Iniciando script principal..."
           python main.py
 
-      - name: "💾 Salvamento Inteligente (A CORREÇÃO ESTÁ AQUI)"
+      - name: "💾 Salvamento Inteligente"
         if: success() 
         run: |
           echo "⚙️ Configurando identidade do Robô..."
           git config --global user.name 'Milho Elite Bot'
           git config --global user.email 'bot@milhopremium.com'
           
-          echo "🔄 Sincronizando antes de salvar (Evita conflito)..."
+          echo "🔄 Sincronizando antes de salvar..."
+          # Como temos o .gitignore agora, esse pull vai funcionar liso
           git pull --rebase origin main || echo "⚠️ Nada para puxar, seguindo..."
 
-          echo "📂 Registrando todas as mudanças (Inclusive Deleções)..."
-          # CORREÇÃO: '-A' garante que o arquivo movido seja DELETADO da origem
+          echo "📂 Registrando mudanças..."
+          # O comando '-A' garante que arquivos movidos sejam deletados da origem
           git add -A
           
-          # Verifica se houve mudança real nos arquivos
           if git diff --staged --quiet; then
-            echo "✅ Nenhuma alteração pendente (Talvez a pasta já estava vazia)."
+            echo "✅ Nenhuma alteração pendente."
           else
-            git commit -m "🤖 [AUTO] Postagem realizada: Arquivo movido e deletado da origem"
+            git commit -m "🤖 [AUTO] Postagem realizada: Vídeo movido e deletado da origem"
             git push
-            echo "✅ Alterações salvas! O vídeo original foi removido com sucesso."
+            echo "✅ Alterações salvas! Log limpo e verde."
           fi
 
       - name: "📊 Relatório Final"

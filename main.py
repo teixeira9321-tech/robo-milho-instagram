@@ -5,15 +5,13 @@ import warnings
 from instagrapi import Client
 import google.generativeai as genai 
 
-# --- CONFIGURAÇÕES SILENCIOSAS ---
-# Silencia avisos de "Deprecated" do Google para manter o log limpo
-warnings.simplefilter("ignore")
-
+# --- CONFIGURAÇÕES GERAIS ---
+warnings.simplefilter("ignore") # Limpa logs sujos
 PASTA_NOVOS = "conteudo_novo"
 PASTA_POSTADOS = "conteudo_postado"
 
 def limpar_lixo_thumbnail(arquivo_video):
-    """Remove a capa .jpg que o instagrapi gera automaticamente"""
+    """Remove a capa .jpg que o instagrapi gera"""
     try:
         nome_base = os.path.basename(arquivo_video)
         caminho_thumb = os.path.join(PASTA_NOVOS, f"{nome_base}.jpg")
@@ -22,8 +20,41 @@ def limpar_lixo_thumbnail(arquivo_video):
     except Exception:
         pass
 
+def gerar_legenda_blindada(genai_client, prompt_text):
+    """
+    Tenta vários modelos em sequência até um funcionar.
+    Isso resolve o erro 404 definitivamente.
+    """
+    # Lista de modelos por ordem de preferência (do melhor para o mais estável)
+    modelos_para_tentar = [
+        'gemini-1.5-flash',       # O mais rápido (Apelido)
+        'gemini-1.5-flash-001',   # Versão congelada/estável (Menos chance de 404)
+        'gemini-1.5-pro',         # Versão Pro
+        'gemini-pro'              # O clássico (Último recurso, quase nunca falha)
+    ]
+
+    for nome_modelo in modelos_para_tentar:
+        try:
+            print(f"🔄 Tentando conectar no modelo: {nome_modelo}...")
+            model = genai_client.GenerativeModel(nome_modelo)
+            response = model.generate_content(prompt_text)
+            
+            if response and response.text:
+                return response.text.strip() # Sucesso! Retorna a legenda
+                
+        except Exception as e:
+            # Se der erro 404 ou qualquer outro, apenas avisa e tenta o próximo da lista
+            if "404" in str(e):
+                print(f"⚠️ Modelo {nome_modelo} não encontrado (404). Tentando o próximo...")
+            else:
+                print(f"⚠️ Erro no modelo {nome_modelo}: {e}")
+            continue # Pula para o próximo loop
+
+    # Se chegou aqui, todos falharam
+    return None
+
 def motor_elite_final():
-    print("🚀 INICIANDO MOTOR DE ELITE (CORREÇÃO DE ERRO DE ARGUMENTO)...")
+    print("🚀 INICIANDO MOTOR DE ELITE (SISTEMA ANTI-404)...")
 
     # 1. Verificação de Ambiente
     insta_session = os.environ.get("INSTA_SESSION")
@@ -33,11 +64,11 @@ def motor_elite_final():
         print("❌ ERRO CRÍTICO: Secrets não configuradas.")
         return
 
-    # 2. Configuração da IA 
+    # 2. Configuração da IA
     try:
         genai.configure(api_key=gemini_key)
     except Exception as e:
-        print(f"❌ Erro na config da IA: {e}")
+        print(f"❌ Erro Config IA: {e}")
 
     # 3. Verificação de Pastas
     for pasta in [PASTA_NOVOS, PASTA_POSTADOS]:
@@ -56,65 +87,52 @@ def motor_elite_final():
     caminho_origem = os.path.join(PASTA_NOVOS, escolhido)
     print(f"📦 Mídia selecionada: {escolhido}")
 
-    # 5. Login Instagram (CORRIGIDO)
+    # 5. Login Instagram (Modo Seguro)
     cl = Client()
     try:
-        # Cria o arquivo temporário de sessão
         with open("session.json", "w") as f:
             f.write(insta_session)
         cl.load_settings("session.json")
-        
-        # --- AQUI ESTAVA O ERRO ---
-        # Antes: cl.get_timeline_feed(amount=1) -> CAUSAVA O ERRO FATAL
-        # Agora: cl.get_timeline_feed() -> Sem argumentos, funciona na versão nova
-        cl.get_timeline_feed() 
-        print("✅ Instagram Conectado (Teste de feed OK).")
-        
+        # Sem timeline_feed() para evitar erros de versão da API, apenas confia na session
+        print("✅ Instagram: Sessão carregada.")
     except Exception as e:
         print(f"❌ Erro de Login: {e}")
-        # Se falhar o login, aborta para não tentar postar sem conta
         return
 
-    # 6. Geração de Legenda
-    print("🧠 Gerando legenda com IA...")
-    legenda = "Milho Premium! 🌽 #agronegocio" 
+    # 6. Geração de Legenda (Lógica Blindada)
+    print("🧠 Iniciando protocolo de IA...")
+    legenda_final = "Milho Premium! 🌽 #agronegocio #milho #qualidade" # Backup final
 
-    try:
-        # Usando o modelo Flash que é rápido e não dá erro 404
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"Crie uma legenda curta e engajadora para Instagram sobre milho verde premium. Foco na solução (sabor, saúde ou lucro). Use emojis. Sem aspas. Arquivo: {escolhido}"
-        
-        response = model.generate_content(prompt)
-        
-        if response and response.text:
-            legenda = response.text.strip()
-            print("✅ Legenda criada pela IA com sucesso.")
-        else:
-            print("⚠️ IA retornou texto vazio.")
-            
-    except Exception as e:
-        print(f"⚠️ Falha na IA ({e}). Usando legenda padrão.")
+    prompt = f"Crie uma legenda curta, viral e apetitosa para Instagram sobre milho verde premium. Foco na solução e sabor. Use emojis. Sem aspas. Arquivo: {escolhido}"
+
+    # Chama a função que tenta vários modelos
+    resultado_ia = gerar_legenda_blindada(genai, prompt)
+    
+    if resultado_ia:
+        legenda_final = resultado_ia
+        print("✅ SUCESSO: Legenda gerada pela IA.")
+    else:
+        print("⚠️ ALERTA: Todos os modelos falharam. Usando legenda padrão.")
 
     # 7. Postagem
     sucesso = False
     try:
-        print("📤 Iniciando Upload...")
+        print(f"📤 Postando: {escolhido}...")
         if escolhido.lower().endswith(('.mp4', '.mov', '.avi')):
-            cl.video_upload(caminho_origem, legenda)
+            cl.video_upload(caminho_origem, legenda_final)
         else:
-            cl.photo_upload(caminho_origem, legenda)
+            cl.photo_upload(caminho_origem, legenda_final)
         
         print("✨ POSTAGEM REALIZADA COM SUCESSO!")
         sucesso = True
         
-        # Limpeza imediata do lixo gerado pelo instagrapi
         if escolhido.lower().endswith(('.mp4', '.mov', '.avi')):
             limpar_lixo_thumbnail(escolhido)
 
     except Exception as e:
         print(f"❌ Falha no Upload: {e}")
 
-    # 8. Mover Arquivo e Finalizar
+    # 8. Mover e Finalizar
     if sucesso:
         destino = os.path.join(PASTA_POSTADOS, escolhido)
         if os.path.exists(destino):

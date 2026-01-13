@@ -15,13 +15,11 @@ on:
         required: false
         default: 'true'
 
-# 🛡️ TRAVA DE SEGURANÇA (NOVIDADE)
-# Impede que dois robôs rodem ao mesmo tempo e corrompam seus arquivos
+# 🛡️ TRAVA DE SEGURANÇA
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Permissão para o robô salvar os arquivos movidos (ESSENCIAL)
 permissions:
   contents: write
 
@@ -29,20 +27,19 @@ jobs:
   operacao-blindada:
     name: "🤖 Postagem e Organização"
     runs-on: ubuntu-latest
-    timeout-minutes: 10 # Se travar, derruba em 10min para não gastar cotas
+    timeout-minutes: 10
 
     steps:
-      - name: "📂 Sincronizando Repositório (Modo Completo)"
+      - name: "📂 Sincronizando Repositório"
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Baixa todo o histórico para evitar erros de 'ref' no git push
+          fetch-depth: 0 
 
       - name: "🔍 Diagnóstico Pré-Voo"
         run: |
-          echo "Verificando arquivos disponíveis..."
+          echo "📂 Estado ATUAL dos arquivos (Antes da Postagem):"
           ls -R
-          # Isso vai mostrar no log se seus vídeos estão mesmo na pasta certa
-
+          
       - name: "🐍 Setup Python Otimizado"
         uses: actions/setup-python@v5
         with:
@@ -52,39 +49,39 @@ jobs:
       - name: "📦 Instalação de Bibliotecas Oficiais"
         run: |
           python -m pip install --upgrade pip
-          # AJUSTE MATEMÁTICO: O '--upgrade' garante a versão que suporta a 'Auditoria de Modelos'
           pip install --upgrade instagrapi requests google-generativeai pillow
 
       - name: "⚙️ Executando Motor de IA"
         env:
           INSTA_SESSION: ${{ secrets.INSTA_SESSION }}
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
-          PYTHONUNBUFFERED: 1 # Força o log da auditoria a aparecer em tempo real
-          # Ajuste de Fuso Horário para os logs saírem com hora do Brasil
+          PYTHONUNBUFFERED: 1 
           TZ: 'America/Sao_Paulo'
         run: |
           echo "🚀 Iniciando script principal..."
           python main.py
 
-      - name: "💾 Salvamento Inteligente (Commit & Push)"
-        if: success() # Só salva se o Python funcionou perfeitamente
+      - name: "💾 Salvamento Inteligente (A CORREÇÃO ESTÁ AQUI)"
+        if: success() 
         run: |
           echo "⚙️ Configurando identidade do Robô..."
           git config --global user.name 'Milho Elite Bot'
           git config --global user.email 'bot@milhopremium.com'
           
-          echo "📂 Preparando arquivos para salvar..."
-          git add conteudo_novo/*
-          git add conteudo_postado/*
+          echo "🔄 Sincronizando antes de salvar (Evita conflito)..."
+          git pull --rebase origin main || echo "⚠️ Nada para puxar, seguindo..."
+
+          echo "📂 Registrando todas as mudanças (Inclusive Deleções)..."
+          # CORREÇÃO: '-A' garante que o arquivo movido seja DELETADO da origem
+          git add -A
           
-          # Lógica Pro: Verifica se tem mudança antes de tentar salvar
-          # Se não tiver mudança (ex: pasta vazia), ele não dá erro, apenas avisa.
+          # Verifica se houve mudança real nos arquivos
           if git diff --staged --quiet; then
-            echo "✅ Nenhuma alteração de arquivo para salvar hoje."
+            echo "✅ Nenhuma alteração pendente (Talvez a pasta já estava vazia)."
           else
-            git commit -m "🤖 [AUTO] Mídia processada e movida com sucesso"
+            git commit -m "🤖 [AUTO] Postagem realizada: Arquivo movido e deletado da origem"
             git push
-            echo "✅ Alterações salvas no repositório!"
+            echo "✅ Alterações salvas! O vídeo original foi removido com sucesso."
           fi
 
       - name: "📊 Relatório Final"

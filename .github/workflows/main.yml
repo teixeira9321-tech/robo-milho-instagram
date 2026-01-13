@@ -52,13 +52,14 @@ jobs:
       - name: "📦 Instalação de Bibliotecas Oficiais"
         run: |
           python -m pip install --upgrade pip
-          # AQUI ESTAVA O ERRO: Mudamos para a biblioteca oficial 'google-generativeai'
-          pip install instagrapi requests google-generativeai pillow
+          # AJUSTE MATEMÁTICO: O '--upgrade' garante a versão que suporta a 'Auditoria de Modelos'
+          pip install --upgrade instagrapi requests google-generativeai pillow
 
       - name: "⚙️ Executando Motor de IA"
         env:
           INSTA_SESSION: ${{ secrets.INSTA_SESSION }}
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+          PYTHONUNBUFFERED: 1 # Força o log da auditoria a aparecer em tempo real
           # Ajuste de Fuso Horário para os logs saírem com hora do Brasil
           TZ: 'America/Sao_Paulo'
         run: |

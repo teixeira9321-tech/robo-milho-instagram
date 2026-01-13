@@ -1,32 +1,47 @@
-name: "🚀 Motor de Elite - Milho Premium"
+name: "🚀 Motor de Elite - Milho Premium V2"
 
 on:
   schedule:
-    # Horários de disparo (Brasil): 07:00, 14:00 e 20:00 (UTC)
-    # Nota: O GitHub usa UTC. 07 UTC = 04:00 BRT. Ajuste conforme necessidade.
-    - cron: '0 7,14,20 * * *'
+    # Horários Otimizados para o Brasil (UTC-3):
+    # 10:00 UTC = 07:00 Brasil
+    # 15:00 UTC = 12:00 Brasil
+    # 22:00 UTC = 19:00 Brasil
+    - cron: '0 10,15,22 * * *'
+  
   workflow_dispatch:
     inputs:
       debug_mode:
-        description: 'Modo de Teste Manual'
+        description: 'Forçar execução manual?'
         required: false
-        default: 'false'
+        default: 'true'
 
-# PERMISSÃO CRÍTICA: Autoriza o robô a salvar arquivos no repositório
+# 🛡️ TRAVA DE SEGURANÇA (NOVIDADE)
+# Impede que dois robôs rodem ao mesmo tempo e corrompam seus arquivos
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Permissão para o robô salvar os arquivos movidos (ESSENCIAL)
 permissions:
   contents: write
 
 jobs:
-  execucao-alta-performance:
-    name: "Processamento de Mídia e IA"
+  operacao-blindada:
+    name: "🤖 Postagem e Organização"
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10 # Se travar, derruba em 10min para não gastar cotas
 
     steps:
-      - name: "📂 Sincronizando Repositório"
+      - name: "📂 Sincronizando Repositório (Modo Completo)"
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Garante histórico completo para evitar erros no git push
+          fetch-depth: 0 # Baixa todo o histórico para evitar erros de 'ref' no git push
+
+      - name: "🔍 Diagnóstico Pré-Voo"
+        run: |
+          echo "Verificando arquivos disponíveis..."
+          ls -R
+          # Isso vai mostrar no log se seus vídeos estão mesmo na pasta certa
 
       - name: "🐍 Setup Python Otimizado"
         uses: actions/setup-python@v5
@@ -34,38 +49,45 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: "📦 Injeção de Dependências"
+      - name: "📦 Instalação de Bibliotecas Oficiais"
         run: |
           python -m pip install --upgrade pip
-          pip install instagrapi requests google-genai pillow
+          # AQUI ESTAVA O ERRO: Mudamos para a biblioteca oficial 'google-generativeai'
+          pip install instagrapi requests google-generativeai pillow
 
-      - name: "⚙️ Ativação do Motor Inteligente"
+      - name: "⚙️ Executando Motor de IA"
         env:
           INSTA_SESSION: ${{ secrets.INSTA_SESSION }}
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
-          PYTHONUNBUFFERED: 1
+          # Ajuste de Fuso Horário para os logs saírem com hora do Brasil
+          TZ: 'America/Sao_Paulo'
         run: |
-          echo "🚀 Iniciando ciclo de postagem..."
+          echo "🚀 Iniciando script principal..."
           python main.py
-          echo "✅ Script Python finalizado."
 
-      # --- NOVIDADE: SALVAMENTO AUTOMÁTICO ---
-      - name: "💾 Salvar Alterações (Mover Arquivos)"
-        if: success() # Só roda se o Python não deu erro
+      - name: "💾 Salvamento Inteligente (Commit & Push)"
+        if: success() # Só salva se o Python funcionou perfeitamente
         run: |
-          echo "⚙️ Configurando identidade do robô..."
-          git config --global user.name 'Motor Elite Bot'
+          echo "⚙️ Configurando identidade do Robô..."
+          git config --global user.name 'Milho Elite Bot'
           git config --global user.email 'bot@milhopremium.com'
           
-          echo "📂 Verificando mudanças nas pastas..."
+          echo "📂 Preparando arquivos para salvar..."
           git add conteudo_novo/*
           git add conteudo_postado/*
           
-          # Verifica se tem algo pra salvar. Se tiver, faz o commit e o push.
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 [AUTO] Mídia processada e movida" && git push)
-          echo "✅ Repositório atualizado com sucesso!"
+          # Lógica Pro: Verifica se tem mudança antes de tentar salvar
+          # Se não tiver mudança (ex: pasta vazia), ele não dá erro, apenas avisa.
+          if git diff --staged --quiet; then
+            echo "✅ Nenhuma alteração de arquivo para salvar hoje."
+          else
+            git commit -m "🤖 [AUTO] Mídia processada e movida com sucesso"
+            git push
+            echo "✅ Alterações salvas no repositório!"
+          fi
 
       - name: "📊 Relatório Final"
         if: always()
         run: |
-          echo "Ciclo encerrado em: $(date)"
+          echo "Status Final: ${{ job.status }}"
+          echo "Finalizado em: $(date)"

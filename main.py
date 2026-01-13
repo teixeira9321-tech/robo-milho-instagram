@@ -1,10 +1,14 @@
 import os
 import shutil
 import time
+import warnings
 from instagrapi import Client
-import google.generativeai as genai # Biblioteca Oficial (Mais estável)
+import google.generativeai as genai 
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES SILENCIOSAS ---
+# Silencia avisos de "Deprecated" do Google para manter o log limpo
+warnings.simplefilter("ignore")
+
 PASTA_NOVOS = "conteudo_novo"
 PASTA_POSTADOS = "conteudo_postado"
 
@@ -15,12 +19,11 @@ def limpar_lixo_thumbnail(arquivo_video):
         caminho_thumb = os.path.join(PASTA_NOVOS, f"{nome_base}.jpg")
         if os.path.exists(caminho_thumb):
             os.remove(caminho_thumb)
-            print(f"🧹 Lixo removido: {caminho_thumb}")
-    except Exception as e:
-        print(f"⚠️ Não foi possível limpar thumbnail: {e}")
+    except Exception:
+        pass
 
 def motor_elite_final():
-    print("🚀 INICIANDO MOTOR DE ELITE (VERSÃO DEFINITIVA)...")
+    print("🚀 INICIANDO MOTOR DE ELITE (CORREÇÃO DE ERRO DE ARGUMENTO)...")
 
     # 1. Verificação de Ambiente
     insta_session = os.environ.get("INSTA_SESSION")
@@ -30,17 +33,9 @@ def motor_elite_final():
         print("❌ ERRO CRÍTICO: Secrets não configuradas.")
         return
 
-    # 2. Configuração da IA (Via Biblioteca Oficial)
-    # Isso resolve o erro 404 para sempre
+    # 2. Configuração da IA 
     try:
         genai.configure(api_key=gemini_key)
-        # Configuração de segurança para evitar bloqueios de conteúdo inofensivo
-        generation_config = {
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 1024,
-        }
     except Exception as e:
         print(f"❌ Erro na config da IA: {e}")
 
@@ -61,7 +56,7 @@ def motor_elite_final():
     caminho_origem = os.path.join(PASTA_NOVOS, escolhido)
     print(f"📦 Mídia selecionada: {escolhido}")
 
-    # 5. Login Instagram (Limpo)
+    # 5. Login Instagram (CORRIGIDO)
     cl = Client()
     try:
         # Cria o arquivo temporário de sessão
@@ -69,25 +64,29 @@ def motor_elite_final():
             f.write(insta_session)
         cl.load_settings("session.json")
         
-        # Teste rápido de validade (opcional, mas bom pra log)
-        cl.get_timeline_feed(amount=1) 
-        print("✅ Instagram Conectado (Sessão Válida).")
+        # --- AQUI ESTAVA O ERRO ---
+        # Antes: cl.get_timeline_feed(amount=1) -> CAUSAVA O ERRO FATAL
+        # Agora: cl.get_timeline_feed() -> Sem argumentos, funciona na versão nova
+        cl.get_timeline_feed() 
+        print("✅ Instagram Conectado (Teste de feed OK).")
+        
     except Exception as e:
-        print(f"❌ Erro de Login (Sessão Inválida ou Expirada): {e}")
-        # Não tentamos login com senha aqui para evitar o erro "Both username..."
+        print(f"❌ Erro de Login: {e}")
+        # Se falhar o login, aborta para não tentar postar sem conta
         return
 
-    # 6. Geração de Legenda (Sem erro 404)
+    # 6. Geração de Legenda
     print("🧠 Gerando legenda com IA...")
-    legenda = "Milho Premium! 🌽 #agronegocio" # Fallback
+    legenda = "Milho Premium! 🌽 #agronegocio" 
 
     try:
+        # Usando o modelo Flash que é rápido e não dá erro 404
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"Crie uma legenda curta e engajadora para Instagram sobre milho verde premium. Foco na solução (sabor, saúde ou lucro). Use emojis. Sem aspas. Arquivo: {escolhido}"
         
         response = model.generate_content(prompt)
         
-        if response.text:
+        if response and response.text:
             legenda = response.text.strip()
             print("✅ Legenda criada pela IA com sucesso.")
         else:
@@ -109,7 +108,7 @@ def motor_elite_final():
         sucesso = True
         
         # Limpeza imediata do lixo gerado pelo instagrapi
-        if chosen.lower().endswith(('.mp4', '.mov', '.avi')):
+        if escolhido.lower().endswith(('.mp4', '.mov', '.avi')):
             limpar_lixo_thumbnail(escolhido)
 
     except Exception as e:
@@ -118,7 +117,6 @@ def motor_elite_final():
     # 8. Mover Arquivo e Finalizar
     if sucesso:
         destino = os.path.join(PASTA_POSTADOS, escolhido)
-        # Evita sobrescrever se já existir
         if os.path.exists(destino):
             timestamp = int(time.time())
             destino = os.path.join(PASTA_POSTADOS, f"{timestamp}_{escolhido}")
